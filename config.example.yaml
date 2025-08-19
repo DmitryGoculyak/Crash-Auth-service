@@ -1,0 +1,30 @@
+database:
+  user: postgres
+  password: 2020
+  host: host.docker.internal
+  port: 5432
+  dbname: crash_auth
+  sslmode: disable
+
+billing_client:
+  host: localhost
+  port: 9001
+
+currency_client:
+  host: localhost
+  port: 9002
+
+jwt:
+  secret_key: "my_secret_key228"
+  token_lifetime: 1440
+
+logger:
+  encoding: json
+  level: info
+  outputPaths:
+    - stdout
+  errorOutputPaths:
+    - stderr
+
+metrics:
+  path: "/metrics"
