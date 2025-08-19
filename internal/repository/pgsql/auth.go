@@ -44,3 +44,17 @@ func (r *AuthRepo) SaveUserPassword(ctx context.Context, tx *sqlx.Tx, userId, pa
 	}
 	return &userPass, nil
 }
+
+func (r *AuthRepo) FindUserByEmail(ctx context.Context, email string) (string, string, error) {
+	var userId, hash string
+	err := r.db.QueryRowxContext(ctx, `
+		SELECT u.id, p.hash FROM users u
+		JOIN emails e ON u.id = e.user_id
+		JOIN passwords p ON u.id = p.user_id
+		WHERE e.email = $1`,
+		email).Scan(&userId, &hash)
+	if err != nil {
+		return "", "", err
+	}
+	return userId, hash, nil
+}

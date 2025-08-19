@@ -9,6 +9,7 @@ import (
 	"Crash-Auth-service/pkg/jwt"
 	"Crash-Auth-service/pkg/transaction"
 	"Crash-Auth-service/pkg/utils"
+	"errors"
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
@@ -18,6 +19,7 @@ import (
 
 type AuthServiceServer interface {
 	ProcessRegistration(ctx context.Context, fullName, email, password, currencyCode string) (*entities.User, error)
+	ProcessAuthorization(ctx context.Context, email, password string) (string, error)
 }
 
 type AuthService struct {
@@ -134,4 +136,44 @@ func (s *AuthService) ProcessRegistration(ctx context.Context, fullName, email, 
 		return nil, err
 	}
 	return createUser, nil
+}
+
+func (s *AuthService) ProcessAuthorization(ctx context.Context, email, password string) (string, error) {
+	input := dto.AuthorizationInput{
+		Email:    email,
+		Password: password,
+	}
+
+	if err := s.validator.Struct(input); err != nil {
+		s.log.Warn("Validation input error",
+			zap.String("email", email),
+			zap.String("password", password),
+			zap.Error(err),
+		)
+		return "", fmt.Errorf("validate input error: %w", err)
+	}
+
+	userId, hash, err := s.repo.FindUserByEmail(ctx, input.Email)
+	if err != nil {
+		s.log.Warn("find user by email error",
+			zap.String("email", input.Email),
+			zap.Error(err),
+		)
+		return "", err
+	}
+
+	if !utils.CheckHash(hash, input.Password) {
+		s.log.Warn("Invalid password")
+		return "", errors.New("invalid password")
+	}
+
+	token, err := s.jwtToken.GenerateToken(userId)
+	if err != nil {
+		s.log.Warn("Generate token error",
+			zap.String("userID", userId),
+			zap.Error(err),
+		)
+		return "", err
+	}
+	return token, nil
 }
