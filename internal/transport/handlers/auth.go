@@ -112,7 +112,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	err := h.service.ChangePassword(ctx, req.Email, req.OldPassword, req.NewPassword)
+	err := h.service.ChangePassword(ctx, req.Email, req.CurrentPassword, req.NewPassword)
 	if err != nil {
 		h.log.Error("change password error",
 			zap.String("Email", req.Email),
@@ -125,5 +125,47 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	)
 	c.JSON(http.StatusAccepted, gin.H{
 		"message": "Change password successfully",
+	})
+}
+
+func (h *AuthHandler) ChangeEmail(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	validCurrentEmail, exists := c.Get("currentEmail")
+	if !exists {
+		h.log.Warn("current email not found in context")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unauthorized"})
+		return
+	}
+	currentEmail := validCurrentEmail.(string)
+
+	var req dto.ChangeEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.log.Warn("request body error",
+			zap.String("Email", req.NewEmail),
+			zap.Error(err),
+		)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "request body error"})
+		return
+	}
+
+	err := h.service.ChangeEmail(ctx, req.Password, currentEmail, req.NewEmail)
+	if err != nil {
+		h.log.Error("change email error",
+			zap.String("CurrentEmail", currentEmail),
+			zap.String("Email", req.NewEmail),
+			zap.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "change email error"})
+		return
+	}
+
+	h.log.Info("change email successfully",
+		zap.String("CurrentEmail", currentEmail),
+		zap.String("Email", req.NewEmail),
+	)
+	c.JSON(http.StatusAccepted, gin.H{
+		"message": "Change email successfully",
 	})
 }

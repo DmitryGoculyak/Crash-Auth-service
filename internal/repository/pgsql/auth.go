@@ -67,3 +67,12 @@ func (r *AuthRepo) UpdatePassword(ctx context.Context, userId, newPassword strin
 	}
 	return err
 }
+
+func (r *AuthRepo) UpdateEmail(ctx context.Context, userId, newEmail string) error {
+	_, err := r.db.ExecContext(ctx, "UPDATE emails SET email = $1 WHERE user_id = $2",
+		newEmail, userId)
+	if err != nil {
+		return err
+	}
+	return err
+}

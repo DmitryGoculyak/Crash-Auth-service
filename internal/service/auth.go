@@ -20,7 +20,8 @@ import (
 type AuthServiceServer interface {
 	ProcessRegistration(ctx context.Context, fullName, email, password, currencyCode string) (*entities.User, error)
 	ProcessAuthorization(ctx context.Context, email, password string) (string, error)
-	ChangePassword(ctx context.Context, email, oldPassword, newPassword string) error
+	ChangePassword(ctx context.Context, email, currentPassword, newPassword string) error
+	ChangeEmail(ctx context.Context, password, currentEmail, newEmail string) error
 }
 
 type AuthService struct {
@@ -179,11 +180,11 @@ func (s *AuthService) ProcessAuthorization(ctx context.Context, email, password 
 	return token, nil
 }
 
-func (s *AuthService) ChangePassword(ctx context.Context, email, oldPassword, newPassword string) error {
+func (s *AuthService) ChangePassword(ctx context.Context, email, currentPassword, newPassword string) error {
 	input := dto.PasswordInput{
-		Email:       email,
-		OldPassword: oldPassword,
-		NewPassword: newPassword,
+		Email:           email,
+		CurrentPassword: currentPassword,
+		NewPassword:     newPassword,
 	}
 
 	if err := s.validator.Struct(input); err != nil {
@@ -203,7 +204,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, email, oldPassword, ne
 		return err
 	}
 
-	if !utils.CheckHash(currentHash, input.OldPassword) {
+	if !utils.CheckHash(currentHash, input.CurrentPassword) {
 		s.log.Warn("Invalid password")
 		return errors.New("invalid password")
 	}
@@ -220,6 +221,54 @@ func (s *AuthService) ChangePassword(ctx context.Context, email, oldPassword, ne
 	if err != nil {
 		s.log.Warn("Update password error",
 			zap.String("userID", userId),
+			zap.Error(err),
+		)
+		return err
+	}
+	return nil
+}
+
+func (s *AuthService) ChangeEmail(ctx context.Context, password, currentEmail, newEmail string) error {
+	input := dto.EmailInput{
+		Password: password,
+		NewEmail: newEmail,
+	}
+
+	if err := s.validator.Struct(input); err != nil {
+		s.log.Warn("Validation input error",
+			zap.String("newEmail", newEmail),
+			zap.String("currentEmail", currentEmail),
+			zap.Error(err),
+		)
+		return fmt.Errorf("validate input error: %w", err)
+	}
+
+	userId, hash, err := s.repo.FindUserByEmail(ctx, currentEmail)
+	if err != nil {
+		s.log.Warn("find user by email error",
+			zap.String("email", currentEmail),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	if !utils.CheckHash(hash, input.Password) {
+		s.log.Warn("Invalid password")
+		return errors.New("invalid password")
+	}
+
+	if _, _, err = s.repo.FindUserByEmail(ctx, newEmail); err == nil {
+		s.log.Warn("Email already exists",
+			zap.String("newEmail", input.NewEmail),
+		)
+		return errors.New("email already exists")
+	}
+
+	err = s.repo.UpdateEmail(ctx, userId, input.NewEmail)
+	if err != nil {
+		s.log.Error("Update email error",
+			zap.String("userID", userId),
+			zap.String("newEmail", input.NewEmail),
 			zap.Error(err),
 		)
 		return err
