@@ -21,6 +21,7 @@ func RunServer(handler *handlers.AuthHandler, log *zap.Logger, metric *metrics.M
 	{
 		api.POST("register/user", handler.RegisterUser)
 		api.POST("login/user", handler.LoginUser)
+		api.PUT("change/password", handler.ChangePassword)
 	}
 
 	r.GET(metric.Path(), metric.Handler())

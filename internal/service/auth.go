@@ -20,6 +20,7 @@ import (
 type AuthServiceServer interface {
 	ProcessRegistration(ctx context.Context, fullName, email, password, currencyCode string) (*entities.User, error)
 	ProcessAuthorization(ctx context.Context, email, password string) (string, error)
+	ChangePassword(ctx context.Context, email, oldPassword, newPassword string) error
 }
 
 type AuthService struct {
@@ -176,4 +177,52 @@ func (s *AuthService) ProcessAuthorization(ctx context.Context, email, password 
 		return "", err
 	}
 	return token, nil
+}
+
+func (s *AuthService) ChangePassword(ctx context.Context, email, oldPassword, newPassword string) error {
+	input := dto.PasswordInput{
+		Email:       email,
+		OldPassword: oldPassword,
+		NewPassword: newPassword,
+	}
+
+	if err := s.validator.Struct(input); err != nil {
+		s.log.Warn("Validation input error",
+			zap.String("Email", email),
+			zap.Error(err),
+		)
+		return fmt.Errorf("validate input error: %w", err)
+	}
+
+	userId, currentHash, err := s.repo.FindUserByEmail(ctx, input.Email)
+	if err != nil {
+		s.log.Error("find user by email error",
+			zap.String("email", input.Email),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	if !utils.CheckHash(currentHash, input.OldPassword) {
+		s.log.Warn("Invalid password")
+		return errors.New("invalid password")
+	}
+
+	newHash, err := utils.CreateHash(input.NewPassword)
+	if err != nil {
+		s.log.Error("Create hash error",
+			zap.Error(err),
+		)
+		return err
+	}
+
+	err = s.repo.UpdatePassword(ctx, userId, newHash)
+	if err != nil {
+		s.log.Warn("Update password error",
+			zap.String("userID", userId),
+			zap.Error(err),
+		)
+		return err
+	}
+	return nil
 }

@@ -58,3 +58,12 @@ func (r *AuthRepo) FindUserByEmail(ctx context.Context, email string) (string, s
 	}
 	return userId, hash, nil
 }
+
+func (r *AuthRepo) UpdatePassword(ctx context.Context, userId, newPassword string) error {
+	_, err := r.db.ExecContext(ctx, "UPDATE passwords SET hash = $1 WHERE user_id = $2",
+		newPassword, userId)
+	if err != nil {
+		return err
+	}
+	return err
+}

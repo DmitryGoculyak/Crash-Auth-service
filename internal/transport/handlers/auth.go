@@ -97,3 +97,33 @@ func (h *AuthHandler) LoginUser(c *gin.Context) {
 		"JWT": token,
 	})
 }
+
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	var req dto.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.log.Warn("request body error",
+			zap.String("Email", req.Email),
+			zap.Error(err),
+		)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "request body error"})
+		return
+	}
+
+	err := h.service.ChangePassword(ctx, req.Email, req.OldPassword, req.NewPassword)
+	if err != nil {
+		h.log.Error("change password error",
+			zap.String("Email", req.Email),
+			zap.Error(err),
+		)
+	}
+
+	h.log.Info("change password successfully",
+		zap.String("Email", req.Email),
+	)
+	c.JSON(http.StatusAccepted, gin.H{
+		"message": "Change password successfully",
+	})
+}

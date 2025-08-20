@@ -11,4 +11,5 @@ type AuthRepository interface {
 	SaveUserEmail(ctx context.Context, tx *sqlx.Tx, userId, email string) (*entities.UserEmail, error)
 	SaveUserPassword(ctx context.Context, tx *sqlx.Tx, userId, password string) (*entities.UserPass, error)
 	FindUserByEmail(ctx context.Context, email string) (string, string, error)
+	UpdatePassword(ctx context.Context, userId, newPassword string) error
 }
