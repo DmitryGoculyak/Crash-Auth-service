@@ -23,3 +23,11 @@ type UserLoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
+type UserFullNameInput struct {
+	NewFullName string `validate:"required,max=150,fullname"`
+}
+
+type ChangeFullNameRequest struct {
+	NewFullName string `json:"newFullName"`
+}

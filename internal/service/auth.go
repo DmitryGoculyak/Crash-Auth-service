@@ -20,8 +20,9 @@ import (
 type AuthServiceServer interface {
 	ProcessRegistration(ctx context.Context, fullName, email, password, currencyCode string) (*entities.User, error)
 	ProcessAuthorization(ctx context.Context, email, password string) (string, error)
-	ChangePassword(ctx context.Context, email, currentPassword, newPassword string) error
-	ChangeEmail(ctx context.Context, password, currentEmail, newEmail string) error
+	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
+	ChangeEmail(ctx context.Context, userID, password, newEmail string) error
+	ChangeFullName(ctx context.Context, userID, newFullName string) error
 }
 
 type AuthService struct {
@@ -180,25 +181,24 @@ func (s *AuthService) ProcessAuthorization(ctx context.Context, email, password 
 	return token, nil
 }
 
-func (s *AuthService) ChangePassword(ctx context.Context, email, currentPassword, newPassword string) error {
+func (s *AuthService) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
 	input := dto.PasswordInput{
-		Email:           email,
 		CurrentPassword: currentPassword,
 		NewPassword:     newPassword,
 	}
 
 	if err := s.validator.Struct(input); err != nil {
 		s.log.Warn("Validation input error",
-			zap.String("Email", email),
+			zap.String("userID", userID),
 			zap.Error(err),
 		)
 		return fmt.Errorf("validate input error: %w", err)
 	}
 
-	userId, currentHash, err := s.repo.FindUserByEmail(ctx, input.Email)
+	currentHash, err := s.repo.FindPasswordByUserID(ctx, userID)
 	if err != nil {
-		s.log.Error("find user by email error",
-			zap.String("email", input.Email),
+		s.log.Error("find user password error",
+			zap.String("userID", userID),
 			zap.Error(err),
 		)
 		return err
@@ -211,24 +211,22 @@ func (s *AuthService) ChangePassword(ctx context.Context, email, currentPassword
 
 	newHash, err := utils.CreateHash(input.NewPassword)
 	if err != nil {
-		s.log.Error("Create hash error",
+		s.log.Error("Create hash error", zap.Error(err))
+		return err
+	}
+
+	if err = s.repo.UpdatePassword(ctx, userID, newHash); err != nil {
+		s.log.Warn("Update password error",
+			zap.String("userID", userID),
 			zap.Error(err),
 		)
 		return err
 	}
 
-	err = s.repo.UpdatePassword(ctx, userId, newHash)
-	if err != nil {
-		s.log.Warn("Update password error",
-			zap.String("userID", userId),
-			zap.Error(err),
-		)
-		return err
-	}
 	return nil
 }
 
-func (s *AuthService) ChangeEmail(ctx context.Context, password, currentEmail, newEmail string) error {
+func (s *AuthService) ChangeEmail(ctx context.Context, userID, password, newEmail string) error {
 	input := dto.EmailInput{
 		Password: password,
 		NewEmail: newEmail,
@@ -237,41 +235,63 @@ func (s *AuthService) ChangeEmail(ctx context.Context, password, currentEmail, n
 	if err := s.validator.Struct(input); err != nil {
 		s.log.Warn("Validation input error",
 			zap.String("newEmail", newEmail),
-			zap.String("currentEmail", currentEmail),
 			zap.Error(err),
 		)
 		return fmt.Errorf("validate input error: %w", err)
 	}
 
-	userId, hash, err := s.repo.FindUserByEmail(ctx, currentEmail)
+	currentHash, err := s.repo.FindPasswordByUserID(ctx, userID)
 	if err != nil {
-		s.log.Warn("find user by email error",
-			zap.String("email", currentEmail),
+		s.log.Warn("find user password error",
+			zap.String("userID", userID),
 			zap.Error(err),
 		)
 		return err
 	}
 
-	if !utils.CheckHash(hash, input.Password) {
+	if !utils.CheckHash(currentHash, input.Password) {
 		s.log.Warn("Invalid password")
 		return errors.New("invalid password")
 	}
 
 	if _, _, err = s.repo.FindUserByEmail(ctx, newEmail); err == nil {
-		s.log.Warn("Email already exists",
-			zap.String("newEmail", input.NewEmail),
-		)
+		s.log.Warn("Email already exists", zap.String("newEmail", newEmail))
 		return errors.New("email already exists")
 	}
 
-	err = s.repo.UpdateEmail(ctx, userId, input.NewEmail)
-	if err != nil {
+	if err = s.repo.UpdateEmail(ctx, userID, input.NewEmail); err != nil {
 		s.log.Error("Update email error",
-			zap.String("userID", userId),
+			zap.String("userID", userID),
 			zap.String("newEmail", input.NewEmail),
 			zap.Error(err),
 		)
 		return err
 	}
+
+	return nil
+}
+
+func (s *AuthService) ChangeFullName(ctx context.Context, userID, newFullName string) error {
+	input := dto.UserFullNameInput{
+		NewFullName: newFullName,
+	}
+
+	if err := s.validator.Struct(input); err != nil {
+		s.log.Warn("Validation input error",
+			zap.String("newFullName", newFullName),
+			zap.Error(err),
+		)
+		return fmt.Errorf("validate input error: %w", err)
+	}
+
+	if err := s.repo.UpdateFullName(ctx, userID, input.NewFullName); err != nil {
+		s.log.Error("Update full name error",
+			zap.String("userID", userID),
+			zap.String("newFullName", input.NewFullName),
+			zap.Error(err),
+		)
+		return err
+	}
+
 	return nil
 }

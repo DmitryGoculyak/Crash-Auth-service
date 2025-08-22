@@ -4,6 +4,9 @@ import (
 	"Crash-Auth-service/internal/entities"
 	"Crash-Auth-service/internal/repository"
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -59,6 +62,21 @@ func (r *AuthRepo) FindUserByEmail(ctx context.Context, email string) (string, s
 	return userId, hash, nil
 }
 
+func (r *AuthRepo) FindPasswordByUserID(ctx context.Context, userId string) (string, error) {
+	var passwordHash string
+
+	err := r.db.GetContext(ctx, &passwordHash, "SELECT hash FROM passwords WHERE user_id = $1 LIMIT 1",
+		userId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", fmt.Errorf("password not found for userID=%s", userId)
+		}
+		return "", err
+	}
+
+	return passwordHash, nil
+}
+
 func (r *AuthRepo) UpdatePassword(ctx context.Context, userId, newPassword string) error {
 	_, err := r.db.ExecContext(ctx, "UPDATE passwords SET hash = $1 WHERE user_id = $2",
 		newPassword, userId)
@@ -71,6 +89,15 @@ func (r *AuthRepo) UpdatePassword(ctx context.Context, userId, newPassword strin
 func (r *AuthRepo) UpdateEmail(ctx context.Context, userId, newEmail string) error {
 	_, err := r.db.ExecContext(ctx, "UPDATE emails SET email = $1 WHERE user_id = $2",
 		newEmail, userId)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func (r *AuthRepo) UpdateFullName(ctx context.Context, userId, fullName string) error {
+	_, err := r.db.ExecContext(ctx, "UPDATE users SET full_name = $1 WHERE id = $2",
+		fullName, userId)
 	if err != nil {
 		return err
 	}
