@@ -4,6 +4,8 @@ import (
 	"Crash-Auth-service/internal/dto"
 	"Crash-Auth-service/internal/service"
 	"context"
+	"database/sql"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"net/http"
@@ -206,5 +208,43 @@ func (h *AuthHandler) ChangeFullName(c *gin.Context) {
 	)
 	c.JSON(http.StatusAccepted, gin.H{
 		"message": "Change full name successfully",
+	})
+}
+
+func (h *AuthHandler) DeleteUserAccount(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+
+	userID := c.GetString("userID")
+	if userID == "" {
+		h.log.Error("userID missing in context")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	err := h.service.DeleteUserAccount(ctx, userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			h.log.Warn("user not found",
+				zap.String("UserID", userID),
+				zap.Error(err),
+			)
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+
+		h.log.Error("delete user account error",
+			zap.String("UserID", userID),
+			zap.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "delete account error"})
+		return
+	}
+
+	h.log.Info("delete user account successfully",
+		zap.String("UserID", userID),
+	)
+	c.JSON(http.StatusAccepted, gin.H{
+		"message": "delete user account successfully",
 	})
 }

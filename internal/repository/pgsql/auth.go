@@ -103,3 +103,20 @@ func (r *AuthRepo) UpdateFullName(ctx context.Context, userId, fullName string) 
 	}
 	return err
 }
+
+func (r *AuthRepo) DeleteUserById(ctx context.Context, userId string) error {
+	row, err := r.db.ExecContext(ctx, "DELETE FROM users WHERE id = $1", userId)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := row.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}

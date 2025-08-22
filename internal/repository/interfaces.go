@@ -15,5 +15,5 @@ type AuthRepository interface {
 	UpdatePassword(ctx context.Context, userId, newPassword string) error
 	UpdateEmail(ctx context.Context, userId, newEmail string) error
 	UpdateFullName(ctx context.Context, userId, fullName string) error
-	//DeleteAccountById()
+	DeleteUserById(ctx context.Context, userId string) error
 }

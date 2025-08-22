@@ -23,6 +23,7 @@ type AuthServiceServer interface {
 	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
 	ChangeEmail(ctx context.Context, userID, password, newEmail string) error
 	ChangeFullName(ctx context.Context, userID, newFullName string) error
+	DeleteUserAccount(ctx context.Context, userId string) error
 }
 
 type AuthService struct {
@@ -294,4 +295,8 @@ func (s *AuthService) ChangeFullName(ctx context.Context, userID, newFullName st
 	}
 
 	return nil
+}
+
+func (s *AuthService) DeleteUserAccount(ctx context.Context, userId string) error {
+	return s.repo.DeleteUserById(ctx, userId)
 }

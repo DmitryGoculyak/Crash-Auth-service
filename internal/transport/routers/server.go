@@ -33,6 +33,7 @@ func RunServer(
 			auth.PUT("change/password", handler.ChangePassword)
 			auth.PUT("change/email", handler.ChangeEmail)
 			auth.PUT("change/fullname", handler.ChangeFullName)
+			auth.DELETE("delete/account", handler.DeleteUserAccount)
 		}
 	}
 
