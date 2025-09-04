@@ -5,11 +5,15 @@ import (
 	"Crash-Auth-service/internal/transport/handlers"
 	"Crash-Auth-service/pkg/jwt"
 	"Crash-Auth-service/pkg/metrics"
+	"errors"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 func RunServer(
+	cfg *ServerConfig,
 	handler *handlers.AuthHandler,
 	log *zap.Logger,
 	metric *metrics.MetricsHelper,
@@ -25,8 +29,8 @@ func RunServer(
 
 	api := r.Group("/api")
 	{
-		api.POST("register/user", handler.RegisterUser)
-		api.POST("login/user", handler.LoginUser)
+		api.POST("registration", handler.RegisterUser)
+		api.POST("login", handler.LoginUser)
 
 		auth := api.Group("/auth", middleware.AuthMiddleware(jwtToken, log))
 		{
@@ -36,11 +40,17 @@ func RunServer(
 			auth.DELETE("delete/account", handler.DeleteUserAccount)
 		}
 	}
-
 	r.GET(metric.Path(), metric.Handler())
 
-	log.Info("Starting http server on port 9000")
-	if err := r.Run(":9000"); err != nil {
-		log.Fatal("Failed to run server", zap.Error(err))
+	log.Info("Starting server on port" + cfg.Port)
+	server := &http.Server{
+		Addr:         cfg.Host + cfg.Port,
+		Handler:      r,
+		WriteTimeout: cfg.WriteTimeout,
+		ReadTimeout:  cfg.ReadTimeout,
+	}
+
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatal("Error starting server", zap.Error(err))
 	}
 }

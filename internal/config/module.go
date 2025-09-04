@@ -3,10 +3,12 @@ package config
 import (
 	"Crash-Auth-service/internal/clients/billing"
 	"Crash-Auth-service/internal/clients/currency"
+	"Crash-Auth-service/internal/transport/routers"
 	"Crash-Auth-service/pkg/db"
 	"Crash-Auth-service/pkg/jwt"
 	"Crash-Auth-service/pkg/logger"
 	"Crash-Auth-service/pkg/metrics"
+
 	"go.uber.org/fx"
 )
 
@@ -19,5 +21,6 @@ var Module = fx.Module("config",
 		func(cfg *Config) *metrics.Config { return cfg.MetricsConfig },
 		func(cfg *Config) *billing.BillingConfig { return cfg.BillingClientConfig },
 		func(cfg *Config) *currency.CurrencyConfig { return cfg.CurrencyClientConfig },
+		func(cfg *Config) *routers.ServerConfig { return cfg.ServerConfig },
 	),
 )

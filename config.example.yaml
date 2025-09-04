@@ -6,6 +6,12 @@ database:
   dbname: crash_auth
   sslmode: disable
 
+server:
+  host: "0.0.0.0"
+  port: ":9000"
+  write_timeout: 15s
+  read_timeout: 15s
+
 billing_client:
   host: localhost
   port: 9001
@@ -16,7 +22,7 @@ currency_client:
 
 jwt:
   secret_key: "my_secret_key228"
-  token_lifetime: 1440
+  token_lifetime: "24h"
 
 logger:
   encoding: json

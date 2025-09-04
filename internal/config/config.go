@@ -3,12 +3,15 @@ package config
 import (
 	"Crash-Auth-service/internal/clients/billing"
 	"Crash-Auth-service/internal/clients/currency"
+	"Crash-Auth-service/internal/transport/routers"
 	"Crash-Auth-service/pkg/db"
 	"Crash-Auth-service/pkg/jwt"
 	"Crash-Auth-service/pkg/logger"
 	"Crash-Auth-service/pkg/metrics"
-	"fmt"
+
 	"github.com/spf13/viper"
+
+	"fmt"
 	"sync"
 )
 
@@ -25,6 +28,7 @@ type Config struct {
 	MetricsConfig        *metrics.Config
 	BillingClientConfig  *billing.BillingConfig
 	CurrencyClientConfig *currency.CurrencyConfig
+	ServerConfig         *routers.ServerConfig
 }
 
 func LoadConfig() (*Config, error) {
@@ -45,6 +49,7 @@ func LoadConfig() (*Config, error) {
 		MetricsConfig := viper.Sub("metrics")
 		BillingClientConfig := viper.Sub("billing_client")
 		CurrencyClientConfig := viper.Sub("currency_client")
+		ServerConfig := viper.Sub("server")
 
 		if err = parseSubConfig(DBConfig, &config.DBConfig); err != nil {
 			return
@@ -62,6 +67,9 @@ func LoadConfig() (*Config, error) {
 			return
 		}
 		if err = parseSubConfig(CurrencyClientConfig, &config.CurrencyClientConfig); err != nil {
+			return
+		}
+		if err = parseSubConfig(ServerConfig, &config.ServerConfig); err != nil {
 			return
 		}
 	})
